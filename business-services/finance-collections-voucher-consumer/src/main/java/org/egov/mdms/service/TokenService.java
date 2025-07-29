@@ -75,6 +75,7 @@ public class TokenService {
 	private ObjectMapper mapper;
 
     public String generateAdminToken(String tenantId) {
+        LOGGER.info("Starting token generation for tenantId: {}", tenantId);
 
         HttpHeaders header = new HttpHeaders();
         header.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -89,18 +90,23 @@ public class TokenService {
         map.add("userType", propertiesManager.getSiUserType());
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, header);
+        LOGGER.debug("Request prepared for token generation");
 
         try {
-            LOGGER.debug("call: {}", propertiesManager.getTokenGenUrl());
+            LOGGER.debug("Calling token generation URL: {}", propertiesManager.getTokenGenUrl());
             Object response = restTemplate.postForObject(propertiesManager.getUserHostUrl().trim() + propertiesManager.getTokenGenUrl().trim(),
                     request, Object.class);
             if (response != null) {
+                LOGGER.info("Token generation response received successfully");
 				String authToken = String.valueOf(((HashMap) response).get("access_token"));
 				User userInfo = mapper.convertValue(JsonPath.read(response, "$.UserRequest"),new TypeReference<User>(){});
 				propertiesManager.setSiAuthToken(authToken);
 				propertiesManager.setSiUserInfo(userInfo);
+                LOGGER.info("Token generated and stored successfully for tenantId: {}", tenantId);
 				return authToken;
-			}
+			} else {
+                LOGGER.warn("Token generation response is null for tenantId: {}", tenantId);
+            }
         } catch (RestClientException e) {
             LOGGER.error("Eror while getting admin authtoken : {}", e);
             return null;
